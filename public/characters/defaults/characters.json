@@ -1,0 +1,13 @@
+{
+  "characters": {
+    "hulk": {
+      "id": "hulk",
+      "name": "Hulk",
+      "filename": "N/A",
+      "path": "https://static.dotgg.gg/rivals/characters/bruce-banner-portrait.webp",
+      "url": "https://static.dotgg.gg/rivals/characters/bruce-banner-portrait.webp",
+      "isDefault": false,
+      "uploadedAt": "2025-08-05T00:00:00.000Z"
+    }
+  }
+}
