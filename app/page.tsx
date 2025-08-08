@@ -228,6 +228,7 @@ const SlotMachine: React.FC<{
   theme: 'orange';
 }> = ({ isSpinning, targetCharacter, availableCharacters, customIcons, onSpinEnd, theme }) => {
   const [visibleChars, setVisibleChars] = useState<(Character | null)[]>([null, null, null]);
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const config = PLAYER_CONFIG['S'];
   const fallbackCharacter: Character = { name: '?' };
 
@@ -245,67 +246,53 @@ const SlotMachine: React.FC<{
 
   useEffect(() => {
     let animationFrameId: number;
-
-    if (!isSpinning) {
-      if (targetCharacter) {
-        // Ensure side characters are stable when not spinning
-        const currentVisibleNames = visibleChars.map(c => c?.name);
-        if (currentVisibleNames[1] === targetCharacter.name) {
-          // If the target character is already in the center, keep the current side characters
-          // unless they are null, in which case, pick new random ones.
-          const newSideChars = shuffleArray(CHARACTER_ROSTER.filter(c => c.name !== targetCharacter.name));
-          setVisibleChars([
-            currentVisibleNames[0] ? visibleChars[0] : newSideChars[0] || fallbackCharacter,
-            targetCharacter,
-            currentVisibleNames[2] ? visibleChars[2] : newSideChars[1] || fallbackCharacter,
-          ]);
-        } else {
-          // If target character just changed or was not in center, set new side characters
-          const sideChars = shuffleArray(CHARACTER_ROSTER.filter(c => c.name !== targetCharacter.name));
-          setVisibleChars([sideChars[0] || fallbackCharacter, targetCharacter, sideChars[1] || fallbackCharacter]);
-        }
-      } else {
-        setVisibleChars([null, null, null]);
-      }
-      return;
-    }
+    let previewTimeoutId: NodeJS.Timeout;
 
     if (isSpinning && targetCharacter) {
-      const baseReel = shuffleArray(availableCharacters.length > 2 ? availableCharacters : CHARACTER_ROSTER);
-      const animationReel = [...baseReel, ...baseReel, ...baseReel];
+      setIsPreviewing(true);
+      previewTimeoutId = setTimeout(() => {
+        setIsPreviewing(false);
+        let startTime: number | null = null;
+        const SPIN_DURATION_MS = 3000;
+        const baseReel = shuffleArray(availableCharacters.length > 2 ? availableCharacters : CHARACTER_ROSTER);
+        const animationReel = [...baseReel, ...baseReel, ...baseReel];
+        const finalRight = shuffleArray(baseReel.filter(c => c.name !== targetCharacter.name))[0] || fallbackCharacter;
+        const finalLeft = shuffleArray(baseReel.filter(c => c.name !== targetCharacter.name && c.name !== finalRight.name))[0] || fallbackCharacter;
+        const finalState = [finalLeft, targetCharacter, finalRight];
 
-      const finalRight = shuffleArray(baseReel.filter(c => c.name !== targetCharacter.name))[0] || fallbackCharacter;
-      const finalLeft = shuffleArray(baseReel.filter(c => c.name !== targetCharacter.name && c.name !== finalRight.name))[0] || fallbackCharacter;
-      const finalState = [finalLeft, targetCharacter, finalRight];
+        const animate = (timestamp: number) => {
+          if (!startTime) startTime = timestamp;
+          const elapsedTime = timestamp - startTime;
+          const progress = elapsedTime / SPIN_DURATION_MS;
+          const easedProgress = easeInOutCubic(progress);
+          const reelIndex = Math.floor(easedProgress * (animationReel.length - 3));
+          const left = animationReel[reelIndex % animationReel.length];
+          const center = animationReel[(reelIndex + 1) % animationReel.length];
+          const right = animationReel[(reelIndex + 2) % animationReel.length];
+          setVisibleChars([left, center, right]);
 
-      let startTime: number | null = null;
-      const SPIN_DURATION_MS = 3000;
-
-      const animate = (timestamp: number) => {
-        if (!startTime) startTime = timestamp;
-        const elapsedTime = timestamp - startTime;
-        const progress = elapsedTime / SPIN_DURATION_MS;
-
-        const easedProgress = easeInOutCubic(progress);
-
-        const reelIndex = Math.floor(easedProgress * (animationReel.length - 3));
-
-        const left = animationReel[reelIndex % animationReel.length];
-        const center = animationReel[(reelIndex + 1) % animationReel.length];
-        const right = animationReel[(reelIndex + 2) % animationReel.length];
-        setVisibleChars([left, center, right]);
-
-        if (progress < 1) {
-          animationFrameId = requestAnimationFrame(animate);
+          if (progress < 1) {
+            animationFrameId = requestAnimationFrame(animate);
+          } else {
+            setVisibleChars(finalState);
+            onSpinEnd();
+          }
+        };
+        animationFrameId = requestAnimationFrame(animate);
+      }, 500);
+    } else {
+        if (targetCharacter) {
+            const sideChars = shuffleArray(CHARACTER_ROSTER.filter(c => c.name !== targetCharacter.name));
+            setVisibleChars([sideChars[0] || fallbackCharacter, targetCharacter, sideChars[1] || fallbackCharacter]);
         } else {
-          setVisibleChars(finalState);
-          onSpinEnd();
+            setVisibleChars([null, null, null]);
         }
-      };
-
-      animationFrameId = requestAnimationFrame(animate);
-      return () => cancelAnimationFrame(animationFrameId);
     }
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      clearTimeout(previewTimeoutId);
+    };
   }, [isSpinning, targetCharacter, availableCharacters, onSpinEnd]);
 
   return (
@@ -314,7 +301,7 @@ const SlotMachine: React.FC<{
            boxShadow: '0 0 15px 5px rgba(251, 146, 60, 0.4), inset 0 0 10px 2px rgba(251, 146, 60, 0.3)'
          }}>
       <SlotReel character={visibleChars[0]} customIcons={customIcons} isCenter={false} />
-      <div className={`rounded-md ${!isSpinning && targetCharacter ? 'bg-black/40 ring-1 ring-inset ring-white/10' : ''}`}>
+      <div className={`rounded-md ${!isSpinning && targetCharacter ? 'bg-black/40 ring-1 ring-inset ring-white/10' : ''} ${isPreviewing ? 'animate-pulse-bright' : ''}`}>
         <SlotReel character={visibleChars[1]} customIcons={customIcons} isCenter={true} />
       </div>
       <SlotReel character={visibleChars[2]} customIcons={customIcons} isCenter={false} />
