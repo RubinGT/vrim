@@ -241,6 +241,8 @@ const SlotMachine: React.FC<{
     return shuffled;
   };
 
+  const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
   useEffect(() => {
     let animationFrameId: number;
 
@@ -277,27 +279,23 @@ const SlotMachine: React.FC<{
       const finalState = [finalLeft, targetCharacter, finalRight];
 
       let startTime: number | null = null;
-      let lastUpdateTime = 0;
-      let reelIndex = 0;
       const SPIN_DURATION_MS = 3000;
 
       const animate = (timestamp: number) => {
         if (!startTime) startTime = timestamp;
         const elapsedTime = timestamp - startTime;
+        const progress = elapsedTime / SPIN_DURATION_MS;
 
-        const slowDownFactor = Math.pow(elapsedTime / SPIN_DURATION_MS, 2);
-        const updateInterval = 50 + (150 * slowDownFactor);
+        const easedProgress = easeInOutCubic(progress);
 
-        if (timestamp - lastUpdateTime > updateInterval) {
-          lastUpdateTime = timestamp;
-          const left = animationReel[reelIndex % animationReel.length];
-          const center = animationReel[(reelIndex + 1) % animationReel.length];
-          const right = animationReel[(reelIndex + 2) % animationReel.length];
-          setVisibleChars([left, center, right]);
-          reelIndex++;
-        }
+        const reelIndex = Math.floor(easedProgress * (animationReel.length - 3));
 
-        if (elapsedTime < SPIN_DURATION_MS) {
+        const left = animationReel[reelIndex % animationReel.length];
+        const center = animationReel[(reelIndex + 1) % animationReel.length];
+        const right = animationReel[(reelIndex + 2) % animationReel.length];
+        setVisibleChars([left, center, right]);
+
+        if (progress < 1) {
           animationFrameId = requestAnimationFrame(animate);
         } else {
           setVisibleChars(finalState);
