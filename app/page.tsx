@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 // Types
-type PlayerId = 'N' | 'S';
+type PlayerId = 'S';
 
 interface Character {
   name: string;
@@ -62,17 +62,8 @@ const CHARACTER_ROSTER: Character[] = [
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const PLAYER_CONFIG = {
-  N: {
-    name: "Niko",
-    color: "cyan",
-    textColor: "text-cyan-400",
-    borderColor: "border-cyan-400",
-    buttonClasses: "bg-cyan-500/20 border-cyan-500 hover:bg-cyan-500/40 hover:text-cyan-300",
-    glow: "text-glow-cyan",
-    slotShadow: "slot-shadow-cyan",
-  },
   S: {
-    name: "Safwan",
+    name: "Randomizer",
     color: "orange",
     textColor: "text-orange-400",
     borderColor: "border-orange-400",
@@ -234,10 +225,10 @@ const SlotMachine: React.FC<{
   availableCharacters: Character[];
   customIcons: CustomIcons;
   onSpinEnd: () => void;
-  theme: 'cyan' | 'orange';
+  theme: 'orange';
 }> = ({ isSpinning, targetCharacter, availableCharacters, customIcons, onSpinEnd, theme }) => {
   const [visibleChars, setVisibleChars] = useState<(Character | null)[]>([null, null, null]);
-  const config = PLAYER_CONFIG[theme === 'cyan' ? 'N' : 'S'];
+  const config = PLAYER_CONFIG['S'];
   const fallbackCharacter: Character = { name: '?' };
 
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -322,9 +313,7 @@ const SlotMachine: React.FC<{
   return (
     <div className={`grid grid-cols-3 gap-2 md:gap-4 p-2 md:p-3 rounded-lg border-2 bg-black/30 ${config.borderColor}`} 
          style={{
-           boxShadow: theme === 'cyan' 
-             ? '0 0 15px 5px rgba(34, 211, 238, 0.4), inset 0 0 10px 2px rgba(34, 211, 238, 0.3)'
-             : '0 0 15px 5px rgba(251, 146, 60, 0.4), inset 0 0 10px 2px rgba(251, 146, 60, 0.3)'
+           boxShadow: '0 0 15px 5px rgba(251, 146, 60, 0.4), inset 0 0 10px 2px rgba(251, 146, 60, 0.3)'
          }}>
       <SlotReel character={visibleChars[0]} customIcons={customIcons} isCenter={false} />
       <div className={`rounded-md ${!isSpinning && targetCharacter ? 'bg-black/40 ring-1 ring-inset ring-white/10' : ''}`}>
@@ -337,7 +326,7 @@ const SlotMachine: React.FC<{
 
 const PlayerSection: React.FC<{
   playerId: PlayerId;
-  theme: 'cyan' | 'orange';
+  theme: 'orange';
   availableCharacters: Character[];
   currentSelection: Character | null;
   customIcons: CustomIcons;
@@ -365,9 +354,7 @@ const PlayerSection: React.FC<{
     <section className={`p-4 md:p-6 rounded-lg border-2 bg-gray-800/50 ${config.borderColor}`}>
       <h2 className={`text-2xl font-bold tracking-widest uppercase mb-4 ${config.textColor}`}
           style={{
-            textShadow: theme === 'cyan' 
-              ? '0 0 8px rgba(34, 211, 238, 0.8)' 
-              : '0 0 8px rgba(251, 146, 60, 0.8)'
+            textShadow: '0 0 8px rgba(251, 146, 60, 0.8)'
           }}>
         {config.name}
       </h2>
@@ -418,77 +405,55 @@ const PlayerSection: React.FC<{
 // Main App Component
 export default function Home() {
   const [customIcons, setCustomIcons] = useLocalStorage<CustomIcons>('mr_custom_icons', {});
-  const [historyN, setHistoryN] = useLocalStorage<HistoryEntry[]>('mr_history_N', []);
   const [historyS, setHistoryS] = useLocalStorage<HistoryEntry[]>('mr_history_S', []);
 
-  const [playerNSelection, setPlayerNSelection] = useState<Character | null>(null);
   const [playerSSelection, setPlayerSSelection] = useState<Character | null>(null);
   
-  const [isSpinningN, setIsSpinningN] = useState(false);
   const [isSpinningS, setIsSpinningS] = useState(false);
   
-  const [targetCharacterN, setTargetCharacterN] = useState<Character | null>(null);
   const [targetCharacterS, setTargetCharacterS] = useState<Character | null>(null);
 
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const availableCharacters = useMemo(() => {
-    const combinedHistoryNames = new Set([...historyN, ...historyS].map(h => h.characterName));
+    const combinedHistoryNames = new Set([...historyS].map(h => h.characterName));
     return CHARACTER_ROSTER.filter(char => !combinedHistoryNames.has(char.name));
-  }, [historyN, historyS]);
+  }, [historyS]);
 
-  const handleSpinEnd = useCallback((playerId: PlayerId) => {
-    const targetCharacter = playerId === 'N' ? targetCharacterN : targetCharacterS;
+  const handleSpinEnd = useCallback(() => {
+    const targetCharacter = targetCharacterS;
     if (!targetCharacter) return;
 
-    const setHistory = playerId === 'N' ? setHistoryN : setHistoryS;
-    const setSelection = playerId === 'N' ? setPlayerNSelection : setPlayerSSelection;
-    const setIsSpinning = playerId === 'N' ? setIsSpinningN : setIsSpinningS;
+    const setHistory = setHistoryS;
+    const setSelection = setPlayerSSelection;
+    const setIsSpinning = setIsSpinningS;
 
     const newEntry: HistoryEntry = { characterName: targetCharacter.name, timestamp: Date.now() };
     
     setSelection(targetCharacter);
     setHistory(prev => [newEntry, ...prev]);
     setIsSpinning(false);
-  }, [targetCharacterN, targetCharacterS, setHistoryN, setHistoryS]);
+  }, [targetCharacterS, setHistoryS]);
 
-  const handleSpin = useCallback((playerId: PlayerId) => {
-    const isSpinning = playerId === 'N' ? isSpinningN : isSpinningS;
-    const otherPlayerSelection = playerId === 'N' ? playerSSelection : playerNSelection;
+  const handleSpin = useCallback(() => {
+    const isSpinning = isSpinningS;
     if (isSpinning) return;
 
-    const possibleChars = availableCharacters.filter(c => c.name !== otherPlayerSelection?.name);
+    const possibleChars = availableCharacters;
     if (possibleChars.length === 0) return;
 
     const randomIndex = Math.floor(Math.random() * possibleChars.length);
     const selected = possibleChars[randomIndex];
     
-    if (playerId === 'N') {
-        setTargetCharacterN(selected);
-        setIsSpinningN(true);
-    } else {
-        setTargetCharacterS(selected);
-        setIsSpinningS(true);
-    }
-  }, [isSpinningN, isSpinningS, availableCharacters, playerNSelection, playerSSelection]);
-
-  const handleSpinBoth = useCallback(() => {
-    if (isSpinningN || isSpinningS || availableCharacters.length < 2) return;
-
-    const shuffled = [...availableCharacters].sort(() => 0.5 - Math.random());
-    const [charN, charS] = shuffled;
-    
-    setTargetCharacterN(charN);
-    setIsSpinningN(true);
-    setTargetCharacterS(charS);
+    setTargetCharacterS(selected);
     setIsSpinningS(true);
-  }, [isSpinningN, isSpinningS, availableCharacters]);
+  }, [isSpinningS, availableCharacters]);
   
-  const handleSkip = useCallback((playerId: PlayerId) => {
-    const setSelection = playerId === 'N' ? setPlayerNSelection : setPlayerSSelection;
-    const setTarget = playerId === 'N' ? setTargetCharacterN : setTargetCharacterS;
-    const setIsSpinning = playerId === 'N' ? setIsSpinningN : setIsSpinningS;
+  const handleSkip = useCallback(() => {
+    const setSelection = setPlayerSSelection;
+    const setTarget = setTargetCharacterS;
+    const setIsSpinning = setIsSpinningS;
 
     setSelection(null);
     setTarget(null);
@@ -514,15 +479,11 @@ export default function Home() {
   };
 
   const purgeAllHistory = useCallback(() => {
-    setHistoryN([]);
     setHistoryS([]);
-    setPlayerNSelection(null);
     setPlayerSSelection(null);
-    setTargetCharacterN(null);
     setTargetCharacterS(null);
-    setIsSpinningN(false);
     setIsSpinningS(false);
-  }, [setHistoryN, setHistoryS]);
+  }, [setHistoryS]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 font-mono"
@@ -536,35 +497,21 @@ export default function Home() {
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
         <header className="text-center mb-8 md:mb-12">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-widest text-white uppercase">
-            <span className="text-cyan-400" style={{textShadow: '0 0 8px rgba(34, 211, 238, 0.8)'}}>Marvel Rivals</span>
-            <span className="text-white mx-2">//</span>
-            <span className="text-orange-400" style={{textShadow: '0 0 8px rgba(251, 146, 60, 0.8)'}}>Randomizer</span>
+            <span className="text-orange-400" style={{textShadow: '0 0 8px rgba(251, 146, 60, 0.8)'}}>Marvel Rivals Randomizer</span>
           </h1>
         </header>
 
         <main className="space-y-12">
-          <PlayerSection
-            playerId="N"
-            theme="cyan"
-            isSpinning={isSpinningN}
-            targetCharacter={targetCharacterN}
-            currentSelection={playerNSelection}
-            onSpin={() => handleSpin('N')}
-            onSpinEnd={() => handleSpinEnd('N')}
-            onSkip={() => handleSkip('N')}
-            availableCharacters={availableCharacters.filter(c => c.name !== playerSSelection?.name)}
-            customIcons={customIcons}
-          />
           <PlayerSection
             playerId="S"
             theme="orange"
             isSpinning={isSpinningS}
             targetCharacter={targetCharacterS}
             currentSelection={playerSSelection}
-            onSpin={() => handleSpin('S')}
-            onSpinEnd={() => handleSpinEnd('S')}
-            onSkip={() => handleSkip('S')}
-            availableCharacters={availableCharacters.filter(c => c.name !== playerNSelection?.name)}
+            onSpin={() => handleSpin()}
+            onSpinEnd={() => handleSpinEnd()}
+            onSkip={() => handleSkip()}
+            availableCharacters={availableCharacters}
             customIcons={customIcons}
           />
         </main>
@@ -572,9 +519,6 @@ export default function Home() {
         <footer className="mt-8 md:mt-12 pt-6 border-t-2 border-gray-700">
           <h3 className="text-center text-lg uppercase tracking-widest text-gray-400 mb-4">Master Command Center</h3>
           <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-            <Button onClick={handleSpinBoth} variant="primary" className="bg-green-600/30 border-green-500 hover:bg-green-500/50 hover:text-green-300 text-green-300">
-              Spin Both
-            </Button>
             <Button onClick={() => setIsAssetModalOpen(true)} variant="secondary">
               Asset Management
             </Button>
@@ -674,24 +618,7 @@ export default function Home() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="text-cyan-400 font-semibold mb-3">Niko's History</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {historyN.map(entry => (
-                  <div key={entry.timestamp} className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded text-sm">
-                    <span className="font-medium">{entry.characterName}</span>
-                    <span className="text-gray-400 text-xs ml-2">
-                      {new Date(entry.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-                {historyN.length === 0 && (
-                  <p className="text-gray-500 text-sm">No selections yet</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-orange-400 font-semibold mb-3">Safwan's History</h4>
+              <h4 className="text-orange-400 font-semibold mb-3">History</h4>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {historyS.map(entry => (
                   <div key={entry.timestamp} className="p-2 bg-orange-500/10 border border-orange-500/30 rounded text-sm">
